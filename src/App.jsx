@@ -464,7 +464,10 @@ const CheckInView = () => {
                 className="w-full bg-red-500 text-white px-4 py-3 rounded-xl text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center"
                 onClick={() => {
                   setShowPhotoModal(false);
-                  startCamera();
+                  setShowSecretModal(true);
+                  setTimeout(() => {
+                    startCamera();
+                  }, 100);
                 }}
               >
                 <Camera size={20} className="mr-2" />
@@ -475,13 +478,16 @@ const CheckInView = () => {
                 onClick={() => {
                   console.log('上传本地图片按钮被点击');
                   setShowPhotoModal(false);
-                  const fileInput = document.getElementById('file-upload');
-                  if (fileInput) {
-                    console.log('找到文件上传input元素:', fileInput);
-                    fileInput.click();
-                  } else {
-                    console.error('未找到文件上传input元素');
-                  }
+                  setShowSecretModal(true);
+                  setTimeout(() => {
+                    const fileInput = document.getElementById('file-upload');
+                    if (fileInput) {
+                      console.log('找到文件上传input元素:', fileInput);
+                      fileInput.click();
+                    } else {
+                      console.error('未找到文件上传input元素');
+                    }
+                  }, 100);
                 }}
               >
                 <Upload size={20} className="mr-2" />
@@ -491,6 +497,16 @@ const CheckInView = () => {
           </div>
         </div>
       )}
+
+      {/* 文件上传input，始终存在于DOM中 */}
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="opacity-0 absolute w-0 h-0 overflow-hidden"
+        onChange={handleImageChange}
+        id="file-upload"
+        style={{position: 'absolute', left: '-9999px'}}
+      />
 
       {/* 说悄悄话模态框 */}
       {showSecretModal && (
@@ -516,16 +532,6 @@ const CheckInView = () => {
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">添加图片 (可选)</label>
-                
-                {/* 文件上传input，使用opacity-0而不是hidden类 */}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="opacity-0 absolute w-0 h-0 overflow-hidden"
-                  onChange={handleImageChange}
-                  id="file-upload"
-                  style={{position: 'absolute', left: '-9999px'}}
-                />
                 
                 {/* 摄像头预览界面 */}
                 {showCamera ? (
