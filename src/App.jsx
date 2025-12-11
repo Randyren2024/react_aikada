@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   MapPin, 
   Search, 
@@ -17,8 +17,11 @@ import {
   BookOpen, 
   Compass,
   ChevronRight,
-  Bell
+  Bell,
+  Upload
 } from 'lucide-react';
+import SquareView from './SquareView';
+import { getSecrets, createSecret, uploadImage } from './api/supabase';
 
 // --- Mock Data ---
 
@@ -33,35 +36,7 @@ const CATEGORIES = [
   { id: 8, name: '全部', icon: <Award size={24} />, color: 'bg-gray-100 text-gray-600' },
 ];
 
-const HOT_ACTIVITIES = [
-  { 
-    id: 1, 
-    title: '上海天文馆小小宇航员', 
-    subtitle: '沉浸式宇宙探索', 
-    price: '178', 
-    sales: '4563', 
-    image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=300&h=200',
-    tag: '热销榜'
-  },
-  { 
-    id: 2, 
-    title: '南京博物院历史解密', 
-    subtitle: '守护国宝 · 探索传奇', 
-    price: '138', 
-    sales: '8065', 
-    image: 'https://images.unsplash.com/photo-1599939571322-792a326991f2?auto=format&fit=crop&q=80&w=300&h=200',
-    tag: '金牌讲师'
-  },
-  { 
-    id: 3, 
-    title: '野生动物园奇妙夜', 
-    subtitle: '与动物做邻居', 
-    price: '276', 
-    sales: '3.8万', 
-    image: 'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&q=80&w=300&h=200',
-    tag: '限时特价'
-  },
-];
+
 
 const GROUP_TASKS = [
   { id: 1, school: '光明小学', title: '春季植物园研学任务', date: '2023-10-25', status: '进行中', count: 45 },
@@ -138,142 +113,527 @@ const Header = () => (
   </div>
 );
 
-// Module: Square (Similar to the reference image Home)
-const SquareView = () => (
-  <div className="pb-24">
-    <Header />
-    
-    {/* Grid Categories */}
-    <div className="mx-4 -mt-8 bg-white rounded-2xl p-4 shadow-lg grid grid-cols-4 gap-y-4 relative z-20">
-      {CATEGORIES.map((cat) => (
-        <div key={cat.id} className="flex flex-col items-center space-y-2">
-          <div className={`${cat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-1`}>
-            {cat.icon}
-          </div>
-          <span className="text-xs text-gray-600 font-medium">{cat.name}</span>
-        </div>
-      ))}
-    </div>
 
-    {/* Hot Sales / Recommendations */}
-    <div className="mt-6 px-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-bold text-gray-800 flex items-center">
-          <span className="text-red-500 mr-2">🔥</span> 热销榜
-        </h2>
-        <span className="text-xs text-gray-400 flex items-center">4.8万人正在选购 <ChevronRight size={12}/></span>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-3">
-        {HOT_ACTIVITIES.map((item) => (
-          <div key={item.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col h-full">
-            <div className="relative h-28 bg-gray-200">
-              <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-              <div className="absolute top-2 left-2 bg-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded text-yellow-900">
-                {item.tag}
-              </div>
-            </div>
-            <div className="p-3 flex flex-col flex-1 justify-between">
-              <div>
-                <h3 className="font-bold text-sm text-gray-800 line-clamp-1">{item.title}</h3>
-                <p className="text-xs text-blue-500 mt-1 bg-blue-50 inline-block px-1 rounded">{item.subtitle}</p>
-              </div>
-              <div className="mt-2 flex items-baseline justify-between">
-                <span className="text-red-500 font-bold text-base">¥{item.price}<span className="text-xs text-gray-400 font-normal">起</span></span>
-                <span className="text-[10px] text-gray-400">已售{item.sales}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Ad Banner */}
-    <div className="mt-6 mx-4 rounded-xl bg-gradient-to-r from-green-100 to-blue-100 p-4 flex items-center justify-between border border-green-200">
-      <div>
-        <h3 className="font-bold text-green-800">新品预售 · 北海钦州营</h3>
-        <p className="text-xs text-green-600 mt-1">限时抢购 20℃温暖冬日</p>
-      </div>
-      <button className="bg-green-600 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-md">立即查看</button>
-    </div>
-  </div>
-);
 
 // Module: Check-in (The core unique feature)
-const CheckInView = () => (
-  <div className="pb-24 bg-green-50 min-h-screen">
-    <div className="bg-green-500 text-white p-6 pt-12 rounded-b-3xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10"></div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">我爱打卡</h1>
-          <p className="text-green-100 text-sm mt-1">今天也要元气满满哦！</p>
-        </div>
-        <div className="w-12 h-12 bg-white rounded-full p-1 shadow-lg">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" className="w-full h-full rounded-full" />
-        </div>
-      </div>
+const CheckInView = () => {
+  const [activeSubTab, setActiveSubTab] = useState('checkin');
+  const [showSecretModal, setShowSecretModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [secretContent, setSecretContent] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [secrets, setSecrets] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // 摄像头相关状态
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [isFrontCamera, setIsFrontCamera] = useState(true);
+  const [cameraError, setCameraError] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  
+  // 模拟用户ID（实际应该从登录状态获取）
+  const userId = 'user-123';
+  
+  // 加载密室消息
+  useEffect(() => {
+    if (activeSubTab === 'secrets') {
+      loadSecrets();
+    }
+  }, [activeSubTab]);
+  
+  // 组件卸载时停止摄像头
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+  
+  // 获取密室消息
+  const loadSecrets = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getSecrets(userId);
+      setSecrets(response.data || []);
+    } catch (err) {
+      console.error('Error loading secrets:', err);
+      setError('加载悄悄话失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // 处理图片选择
+  const handleImageChange = (e) => {
+    console.log('handleImageChange被调用', e.target.files);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      console.log('选择的文件:', file.name, file.type, file.size);
+      setSelectedImageFile(file);
+      setSelectedImage(URL.createObjectURL(file));
+    } else {
+      console.log('没有选择文件');
+    }
+  };
+  
+  // 启动摄像头
+  const startCamera = async () => {
+    try {
+      setCameraError(null);
+      // 获取摄像头媒体流
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: isFrontCamera ? 'user' : 'environment'
+        },
+        audio: false
+      });
       
-      {/* Pet Interaction Placeholder */}
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex items-center space-x-4 border border-white/20">
-        <div className="w-16 h-16 bg-yellow-300 rounded-full flex items-center justify-center text-4xl shadow-inner relative">
-          🐣
-          <div className="absolute bottom-0 right-0 bg-red-500 text-[8px] text-white px-1.5 py-0.5 rounded-full">Lv.3</div>
-        </div>
-        <div className="flex-1">
-          <div className="bg-white text-gray-800 text-xs p-2 rounded-lg rounded-tl-none shadow-sm relative mb-1">
-            "主人，听说附近的科学馆有个新展览，我们去看看吧？"
+      setCameraStream(stream);
+      
+      // 将媒体流设置到video元素
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      
+      setShowCamera(true);
+    } catch (err) {
+      console.error('Error starting camera:', err);
+      setCameraError('无法访问摄像头，请检查摄像头权限');
+    }
+  };
+  
+  // 停止摄像头
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+  };
+  
+  // 拍照
+  const takePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    
+    // 设置画布大小与视频一致
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // 将视频帧绘制到画布
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // 将画布内容转换为Blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        // 创建File对象
+        const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        
+        // 设置选中的图片
+        setSelectedImageFile(file);
+        setSelectedImage(canvas.toDataURL('image/jpeg'));
+        
+        // 停止摄像头
+        stopCamera();
+      }
+    }, 'image/jpeg');
+  };
+  
+  // 切换摄像头
+  const toggleCamera = async () => {
+    // 先停止当前摄像头
+    stopCamera();
+    
+    // 切换摄像头方向
+    setIsFrontCamera(!isFrontCamera);
+    
+    // 重新启动摄像头
+    setTimeout(() => {
+      startCamera();
+    }, 100);
+  };
+  
+  // 处理创建秘密
+  const handleCreateSecret = async () => {
+    if (!secretContent.trim()) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      let imageUrl = null;
+      
+      // 上传图片（如果有）
+      if (selectedImageFile) {
+        const uploadResult = await uploadImage(selectedImageFile, userId);
+        imageUrl = uploadResult.url;
+      }
+      
+      // 创建秘密
+      await createSecret({
+        user_id: userId,
+        content: secretContent,
+        image_url: imageUrl
+      });
+      
+      // 重新加载秘密列表
+      await loadSecrets();
+      
+      // 关闭模态框并重置
+      setShowSecretModal(false);
+      setSecretContent('');
+      setSelectedImage(null);
+      setSelectedImageFile(null);
+    } catch (err) {
+      console.error('Error creating secret:', err);
+      setError('创建悄悄话失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="pb-24 bg-green-50 min-h-screen">
+      <div className="bg-green-500 text-white p-6 pt-12 rounded-b-3xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">我爱打卡</h1>
+            <p className="text-green-100 text-sm mt-1">今天也要元气满满哦！</p>
           </div>
-          <button className="text-[10px] bg-green-700/50 text-white px-2 py-0.5 rounded-full">喂食</button>
-          <button className="text-[10px] bg-green-700/50 text-white px-2 py-0.5 rounded-full ml-2">对话</button>
+          <div className="w-12 h-12 bg-white rounded-full p-1 shadow-lg">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" className="w-full h-full rounded-full" />
+          </div>
         </div>
-      </div>
-    </div>
-
-    {/* i-Map / Footprint */}
-    <div className="px-4 -mt-6">
-       <div className="bg-white rounded-2xl p-4 shadow-xl border border-green-100">
-         <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-gray-800 flex items-center"><Map size={16} className="mr-1 text-green-500"/> 研学足迹 (i-Map)</h3>
-            <span className="text-xs text-gray-400">查看全景图 {'>'}</span>
-         </div>
-         <div className="h-40 bg-green-50 rounded-xl border-2 border-dashed border-green-200 flex items-center justify-center relative overflow-hidden">
-            {/* Mock Map Elements */}
-            <div className="absolute top-4 left-4 text-2xl animate-bounce">🏛️</div>
-            <div className="absolute bottom-4 right-10 text-2xl">🌲</div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-green-300 text-sm">
-                点击点亮地图<br/>生成专属手账
+        
+        {/* Pet Interaction Placeholder */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex items-center space-x-4 border border-white/20">
+          <div className="w-16 h-16 bg-yellow-300 rounded-full flex items-center justify-center text-4xl shadow-inner relative">
+            🐣
+            <div className="absolute bottom-0 right-0 bg-red-500 text-[8px] text-white px-1.5 py-0.5 rounded-full">Lv.3</div>
+          </div>
+          <div className="flex-1">
+            <div className="bg-white text-gray-800 text-xs p-2 rounded-lg rounded-tl-none shadow-sm relative mb-1">
+              "主人，听说附近的科学馆有个新展览，我们去看看吧？"
             </div>
-         </div>
-       </div>
-    </div>
-
-    {/* Current Tasks */}
-    <div className="p-4">
-      <h3 className="font-bold text-gray-800 mb-3">待完成任务</h3>
-      <div className="space-y-3">
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-400 flex justify-between items-center">
-          <div>
-            <h4 className="font-bold text-gray-800">打卡植物园温室</h4>
-            <p className="text-xs text-gray-500 mt-1">需上传3张不同植物照片</p>
+            <button className="text-[10px] bg-green-700/50 text-white px-2 py-0.5 rounded-full">喂食</button>
+            <button className="text-[10px] bg-green-700/50 text-white px-2 py-0.5 rounded-full ml-2">对话</button>
           </div>
-          <button className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform">
-            去拍照
-          </button>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-400 flex justify-between items-center">
-          <div>
-            <h4 className="font-bold text-gray-800">整理周末日记</h4>
-            <p className="text-xs text-gray-500 mt-1">生成智能手账 (i-Storybook)</p>
-          </div>
-          <button className="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform">
-            去生成
+      </div>
+
+      {/* Sub Navigation Tabs */}
+      <div className="bg-white border-b border-green-100 overflow-x-auto whitespace-nowrap">
+        <div className="flex">
+          <button 
+            className={`px-6 py-3 flex-1 text-center font-medium text-sm transition-colors ${activeSubTab === 'checkin' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-green-500'}`}
+            onClick={() => setActiveSubTab('checkin')}
+          >
+            打卡记录
+          </button>
+          <button 
+            className={`px-6 py-3 flex-1 text-center font-medium text-sm transition-colors ${activeSubTab === 'secrets' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-green-500'}`}
+            onClick={() => setActiveSubTab('secrets')}
+          >
+            我的密室
           </button>
         </div>
       </div>
+
+      {/* Main Content based on Sub Tab */}
+      {activeSubTab === 'checkin' ? (
+        <>
+          {/* i-Map / Footprint */}
+          <div className="px-4 -mt-6">
+             <div className="bg-white rounded-2xl p-4 shadow-xl border border-green-100">
+               <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-gray-800 flex items-center"><Map size={16} className="mr-1 text-green-500"/> 研学足迹 (i-Map)</h3>
+                  <span className="text-xs text-gray-400">查看全景图 {'>'}</span>
+               </div>
+               <div className="h-40 bg-green-50 rounded-xl border-2 border-dashed border-green-200 flex items-center justify-center relative overflow-hidden">
+                  {/* Mock Map Elements */}
+                  <div className="absolute top-4 left-4 text-2xl animate-bounce">🏛️</div>
+                  <div className="absolute bottom-4 right-10 text-2xl">🌲</div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-green-300 text-sm">
+                      点击点亮地图<br/>生成专属手账
+                  </div>
+               </div>
+             </div>
+          </div>
+
+          {/* Current Tasks */}
+          <div className="p-4">
+            <h3 className="font-bold text-gray-800 mb-3">待完成任务</h3>
+            <div className="space-y-3">
+              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-400 flex justify-between items-center">
+                <div>
+                  <h4 className="font-bold text-gray-800">打卡植物园温室</h4>
+                  <p className="text-xs text-gray-500 mt-1">需上传3张不同植物照片</p>
+                </div>
+                <button 
+                  className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform"
+                  onClick={() => setShowPhotoModal(true)}
+                >
+                  去拍照
+                </button>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-400 flex justify-between items-center">
+                <div>
+                  <h4 className="font-bold text-gray-800">整理周末日记</h4>
+                  <p className="text-xs text-gray-500 mt-1">生成智能手账 (i-Storybook)</p>
+                </div>
+                <button className="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform">
+                  去生成
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="p-4">
+          {/* 我的密室 */}
+          <div className="bg-white rounded-2xl p-4 shadow-xl border border-purple-100 mb-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-800 flex items-center">
+                <Tent size={18} className="mr-1 text-purple-500"/>
+                我的密室
+              </h3>
+              <button 
+                className="bg-purple-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform"
+                onClick={() => setShowSecretModal(true)}
+              >
+                说悄悄话
+              </button>
+            </div>
+            
+            {/* 密室消息列表 */}
+            <div className="space-y-3">
+              {loading ? (
+                <div className="text-center text-gray-400 py-8">
+                  <p>加载中...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center text-red-400 py-8">
+                  <p>{error}</p>
+                  <button onClick={loadSecrets} className="text-purple-500 mt-2">重试</button>
+                </div>
+              ) : secrets.length > 0 ? (
+                secrets.map(secret => (
+                  <div key={secret.id} className="bg-purple-50 p-3 rounded-xl border border-purple-100">
+                    {secret.image_url && (
+                      <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                        <img src={secret.image_url} alt="secret" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-700 mb-2">{secret.content}</p>
+                    <div className="text-xs text-purple-500">{new Date(secret.created_at).toLocaleString()}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-400 py-8">
+                  <Tent size={32} className="mx-auto mb-2 opacity-50"/>
+                  <p>还没有悄悄话，快来写第一个吧！</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 拍照选项模态框 */}
+      {showPhotoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="bg-red-500 text-white p-4 rounded-t-2xl flex justify-between items-center">
+              <h3 className="font-bold text-lg">选择拍照方式</h3>
+              <button onClick={() => setShowPhotoModal(false)} className="text-white hover:text-red-100">
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <button 
+                className="w-full bg-red-500 text-white px-4 py-3 rounded-xl text-sm font-medium hover:bg-red-600 transition-colors flex items-center justify-center"
+                onClick={() => {
+                  setShowPhotoModal(false);
+                  startCamera();
+                }}
+              >
+                <Camera size={20} className="mr-2" />
+                使用摄像头拍照
+              </button>
+              <button 
+                className="w-full bg-gray-500 text-white px-4 py-3 rounded-xl text-sm font-medium hover:bg-gray-600 transition-colors flex items-center justify-center"
+                onClick={() => {
+                  console.log('上传本地图片按钮被点击');
+                  setShowPhotoModal(false);
+                  const fileInput = document.getElementById('file-upload');
+                  if (fileInput) {
+                    console.log('找到文件上传input元素:', fileInput);
+                    fileInput.click();
+                  } else {
+                    console.error('未找到文件上传input元素');
+                  }
+                }}
+              >
+                <Upload size={20} className="mr-2" />
+                上传本地图片
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 说悄悄话模态框 */}
+      {showSecretModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="bg-purple-500 text-white p-4 rounded-t-2xl flex justify-between items-center">
+              <h3 className="font-bold text-lg">说悄悄话</h3>
+              <button onClick={() => setShowSecretModal(false)} className="text-white hover:text-purple-100">
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">你的秘密</label>
+                <textarea 
+                  className="w-full border border-gray-300 rounded-xl p-3 h-32 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  placeholder="在这里写下你的秘密..."
+                  value={secretContent}
+                  onChange={(e) => setSecretContent(e.target.value)}
+                ></textarea>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">添加图片 (可选)</label>
+                
+                {/* 文件上传input，使用opacity-0而不是hidden类 */}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="opacity-0 absolute w-0 h-0 overflow-hidden"
+                  onChange={handleImageChange}
+                  id="file-upload"
+                  style={{position: 'absolute', left: '-9999px'}}
+                />
+                
+                {/* 摄像头预览界面 */}
+                {showCamera ? (
+                  <div className="bg-gray-100 rounded-xl p-4 relative">
+                    {/* 视频预览 */}
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      className="w-full h-64 object-cover rounded-lg"
+                    />
+                    <canvas ref={canvasRef} className="hidden" />
+                    
+                    {/* 摄像头错误提示 */}
+                    {cameraError && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-sm p-4">
+                        {cameraError}
+                      </div>
+                    )}
+                    
+                    {/* 摄像头控制按钮 */}
+                    <div className="flex justify-between items-center mt-4">
+                      <button 
+                        className="px-4 py-2 bg-gray-500 text-white rounded-full text-sm font-medium hover:bg-gray-600"
+                        onClick={stopCamera}
+                      >
+                        取消
+                      </button>
+                      
+                      <button 
+                        className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-transform"
+                        onClick={takePhoto}
+                      >
+                        <div className="w-12 h-12 rounded-full bg-red-500"></div>
+                      </button>
+                      
+                      <button 
+                        className="px-4 py-2 bg-gray-500 text-white rounded-full text-sm font-medium hover:bg-gray-600"
+                        onClick={toggleCamera}
+                      >
+                        切换摄像头
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* 常规图片上传界面 */
+                  <>
+                    <div className="relative">
+                      <div 
+                        className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-500 transition-colors cursor-pointer"
+                        onClick={() => document.getElementById('file-upload').click()}
+                      >
+                        <Camera size={32} className="mx-auto mb-2 text-gray-400"/>
+                        <p className="text-sm text-gray-500">点击或拖拽图片到这里</p>
+                      </div>
+                    </div>
+                    
+                    {/* 使用摄像头按钮 */}
+                    <button 
+                      className="mt-2 w-full bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-600 transition-colors"
+                      onClick={startCamera}
+                    >
+                      <Camera size={16} className="inline mr-1" />
+                      使用摄像头拍照
+                    </button>
+                    
+                    {/* 已选择图片预览 */}
+                    {selectedImage && (
+                      <div className="mt-3 relative">
+                        <img src={selectedImage} alt="preview" className="w-full h-40 object-cover rounded-xl border-2 border-purple-500" />
+                        <button 
+                          className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                          onClick={() => {
+                            setSelectedImage(null);
+                            setSelectedImageFile(null);
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button 
+                  className="px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => setShowSecretModal(false)}
+                  disabled={loading}
+                >
+                  取消
+                </button>
+                <button 
+                  className="px-4 py-2 bg-purple-500 text-white rounded-full text-sm font-bold hover:bg-purple-600"
+                  onClick={handleCreateSecret}
+                  disabled={!secretContent.trim() || loading}
+                >
+                  {loading ? '保存中...' : '保存秘密'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // Module: Groups (Top-down organization)
 const GroupView = () => (
@@ -448,7 +808,7 @@ const App = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'square':
-        return <SquareView />;
+        return <SquareView CATEGORIES={CATEGORIES} Header={Header} />;
       case 'group':
         return <GroupView />;
       case 'checkin':
@@ -458,7 +818,7 @@ const App = () => {
       case 'mine':
         return <MineView />;
       default:
-        return <SquareView />;
+        return <SquareView CATEGORIES={CATEGORIES} Header={Header} />;
     }
   };
 
