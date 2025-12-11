@@ -7,17 +7,13 @@ from supabase import create_client, Client
 # 创建API蓝图
 api_bp = Blueprint('api', __name__)
 
-# 初始化Supabase客户端
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+# Supabase客户端将在app.py中初始化并传入
+supabase = None
 
-if not supabase_url or not supabase_key:
-    print("错误: 缺少Supabase配置信息")
-    print(f"SUPABASE_URL: {supabase_url}")
-    print(f"SUPABASE_KEY: {supabase_key}")
-    exit(1)
-
-supabase: Client = create_client(supabase_url, supabase_key)
+def init_supabase(supabase_client):
+    """初始化Supabase客户端"""
+    global supabase
+    supabase = supabase_client
 
 # =====================
 # 0. 用户系统 (User System)
@@ -139,10 +135,10 @@ def get_badges():
         return jsonify({'error': 'user_id is required'}), 400
     
     try:
-        response = supabase.table('user_badges')
-            .select('id, badge_id, unlocked_at, badges(*)')
-            .eq('user_id', user_id)
-            .order('unlocked_at', desc=True)
+        response = supabase.table('user_badges') \
+            .select('id, badge_id, unlocked_at, badges(*)') \
+            .eq('user_id', user_id) \
+            .order('unlocked_at', desc=True) \
             .execute()
         
         return jsonify({
@@ -173,10 +169,10 @@ def unlock_badge():
     
     try:
         # 检查是否已经解锁
-        existing = supabase.table('user_badges')
-            .select('id')
-            .eq('user_id', data['user_id'])
-            .eq('badge_id', data['badge_id'])
+        existing = supabase.table('user_badges') \
+            .select('id') \
+            .eq('user_id', data['user_id']) \
+            .eq('badge_id', data['badge_id']) \
             .execute()
         
         if existing.data:
@@ -433,17 +429,17 @@ def get_secrets():
     
     try:
         offset = (page - 1) * page_size
-        response = supabase.table('secrets')
-            .select('*')
-            .eq('user_id', user_id)
-            .order('created_at', desc=True)
-            .range(offset, offset + page_size - 1)
+        response = supabase.table('secrets') \
+            .select('*') \
+            .eq('user_id', user_id) \
+            .order('created_at', desc=True) \
+            .range(offset, offset + page_size - 1) \
             .execute()
         
         # 获取总记录数
-        total_response = supabase.table('secrets')
-            .select('id', count='exact')
-            .eq('user_id', user_id)
+        total_response = supabase.table('secrets') \
+            .select('id', count='exact') \
+            .eq('user_id', user_id) \
             .execute()
         
         return jsonify({
@@ -541,8 +537,17 @@ def upload_image():
         unique_filename = f"{user_id}/{uuid.uuid4()}{ext}"
         
         # 上传到 Supabase 存储
-        # 注意：需要先在 Supabase 控制台创建名为 'images' 的存储桶
-        bucket_name = 'images'
+        # 使用用户创建的 'image' 存储桶（不是 'images'）
+        bucket_name = 'image'
+        
+        # 检查存储桶是否存在
+        try:
+            buckets = supabase.storage.list_buckets()
+            bucket_exists = any(bucket.name == bucket_name for bucket in buckets)
+            if not bucket_exists:
+                return jsonify({'error': f'存储桶 {bucket_name} 不存在，请在Supabase控制台创建'}), 400
+        except Exception as bucket_err:
+            return jsonify({'error': f'检查存储桶失败: {str(bucket_err)}'}), 500
         
         # 读取文件内容
         file_content = file.read()
@@ -563,4 +568,5 @@ def upload_image():
             'bucket': bucket_name
         }), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"图片上传错误: {str(e)}")
+        return jsonify({'error': f'图片上传失败: {str(e)}'}), 500

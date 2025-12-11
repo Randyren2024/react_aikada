@@ -270,20 +270,33 @@ const CheckInView = () => {
     setError(null);
     
     try {
+      console.log('开始创建秘密，内容:', secretContent);
       let imageUrl = null;
       
       // 上传图片（如果有）
       if (selectedImageFile) {
-        const uploadResult = await uploadImage(selectedImageFile, userId);
-        imageUrl = uploadResult.url;
+        console.log('开始上传图片，文件信息:', selectedImageFile.name, selectedImageFile.type, selectedImageFile.size);
+        try {
+          const uploadResult = await uploadImage(selectedImageFile, userId);
+          console.log('图片上传成功，URL:', uploadResult.url);
+          imageUrl = uploadResult.url;
+        } catch (uploadErr) {
+          console.error('图片上传失败:', uploadErr);
+          throw new Error(`图片上传失败: ${uploadErr.message}`);
+        }
       }
       
       // 创建秘密
-      await createSecret({
+      console.log('开始创建秘密记录，图片URL:', imageUrl);
+      const secretData = {
         user_id: userId,
         content: secretContent,
         image_url: imageUrl
-      });
+      };
+      console.log('秘密数据:', secretData);
+      
+      await createSecret(secretData);
+      console.log('秘密创建成功');
       
       // 重新加载秘密列表
       await loadSecrets();
@@ -293,9 +306,11 @@ const CheckInView = () => {
       setSecretContent('');
       setSelectedImage(null);
       setSelectedImageFile(null);
+      
+      console.log('秘密创建流程完成');
     } catch (err) {
       console.error('Error creating secret:', err);
-      setError('创建悄悄话失败，请稍后重试');
+      setError(`创建悄悄话失败: ${err.message}`);
     } finally {
       setLoading(false);
     }

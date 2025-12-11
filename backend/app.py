@@ -5,6 +5,9 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
+# 导入API路由
+from routes import api_bp
+
 # 加载环境变量
 load_dotenv()
 
@@ -23,6 +26,13 @@ if not supabase_url or not supabase_key:
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
+# 初始化API蓝图中的Supabase客户端
+from routes import init_supabase
+init_supabase(supabase)
+
+# 注册API蓝图
+app.register_blueprint(api_bp, url_prefix='/api')
+
 # 基础路由
 @app.route('/')
 def hello():
@@ -32,77 +42,7 @@ def hello():
 def health_check():
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
-# 打卡记录相关路由
-@app.route('/api/checkins', methods=['GET'])
-def get_checkins():
-    try:
-        user_id = request.args.get('user_id')
-        if not user_id:
-            return jsonify({"error": "缺少user_id参数"}), 400
-        
-        # 获取用户的打卡记录
-        result = supabase.table('checkins').select('*').eq('user_id', user_id).execute()
-        return jsonify({"data": result.data})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/checkins', methods=['POST'])
-def create_checkin():
-    try:
-        data = request.get_json()
-        
-        # 验证必要字段
-        required_fields = ['user_id', 'content']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"缺少必要字段: {field}"}), 400
-        
-        # 创建打卡记录
-        checkin_data = {
-            'user_id': data['user_id'],
-            'content': data['content'],
-            'location': data.get('location', ''),
-            'created_at': datetime.now().isoformat()
-        }
-        
-        result = supabase.table('checkins').insert(checkin_data).execute()
-        return jsonify({"data": result.data}), 201
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# 用户相关路由
-@app.route('/api/users/<user_id>', methods=['GET'])
-def get_user(user_id):
-    try:
-        # 获取用户信息
-        result = supabase.table('users').select('*').eq('id', user_id).single().execute()
-        if not result.data:
-            return jsonify({"error": "用户不存在"}), 404
-        return jsonify({"data": result.data})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/users/<user_id>', methods=['PUT'])
-def update_user(user_id):
-    try:
-        data = request.get_json()
-        
-        # 更新用户信息
-        update_data = {}
-        if 'nickname' in data:
-            update_data['nickname'] = data['nickname']
-        if 'avatar_url' in data:
-            update_data['avatar_url'] = data['avatar_url']
-        if 'bio' in data:
-            update_data['bio'] = data['bio']
-        
-        if not update_data:
-            return jsonify({"error": "没有要更新的字段"}), 400
-        
-        result = supabase.table('users').update(update_data).eq('id', user_id).execute()
-        return jsonify({"data": result.data})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# 基础路由保持不变，其他API路由已通过蓝图导入
 
 if __name__ == '__main__':
     print("正在启动打卡达人API服务器...")
