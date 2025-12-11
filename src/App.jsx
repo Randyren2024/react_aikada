@@ -264,13 +264,19 @@ const CheckInView = () => {
   
   // 处理创建秘密
   const handleCreateSecret = async () => {
-    if (!secretContent.trim()) return;
+    if (!secretContent.trim()) {
+      console.log('secretContent为空，无法创建秘密');
+      setError('请先输入秘密内容');
+      // 3秒后自动清除错误信息
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     
+    console.log('开始创建秘密，内容:', secretContent);
     setLoading(true);
     setError(null);
     
     try {
-      console.log('开始创建秘密，内容:', secretContent);
       let imageUrl = null;
       
       // 上传图片（如果有）
@@ -526,7 +532,7 @@ const CheckInView = () => {
       {/* 说悄悄话模态框 */}
       {showSecretModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto relative z-60">
             <div className="bg-purple-500 text-white p-4 rounded-t-2xl flex justify-between items-center">
               <h3 className="font-bold text-lg">说悄悄话</h3>
               <button onClick={() => setShowSecretModal(false)} className="text-white hover:text-purple-100">
@@ -535,13 +541,26 @@ const CheckInView = () => {
             </div>
             
             <div className="p-4">
+              {/* 错误信息显示 */}
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-lg mb-4">
+                  {error}
+                </div>
+              )}
+              
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">你的秘密</label>
                 <textarea 
                   className="w-full border border-gray-300 rounded-xl p-3 h-32 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   placeholder="在这里写下你的秘密..."
                   value={secretContent}
-                  onChange={(e) => setSecretContent(e.target.value)}
+                  onChange={(e) => {
+                    const newContent = e.target.value;
+                    console.log('textarea内容变化:', newContent);
+                    console.log('trim后:', newContent.trim());
+                    console.log('!trim():', !newContent.trim());
+                    setSecretContent(newContent);
+                  }}
                 ></textarea>
               </div>
               
@@ -642,10 +661,17 @@ const CheckInView = () => {
                 </button>
                 <button 
                   className="px-4 py-2 bg-purple-500 text-white rounded-full text-sm font-bold hover:bg-purple-600"
-                  onClick={handleCreateSecret}
-                  disabled={!secretContent.trim() || loading}
+                  onClick={() => {
+                    console.log('保存秘密按钮被点击');
+                    console.log('secretContent:', secretContent);
+                    console.log('secretContent.trim():', secretContent.trim());
+                    console.log('loading:', loading);
+                    handleCreateSecret();
+                  }}
+                  disabled={loading}
+                  style={{ cursor: loading ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? '保存中...' : '保存秘密'}
+                  {loading ? '保存中...' : (!secretContent.trim() ? '请输入内容' : '保存秘密')}
                 </button>
               </div>
             </div>

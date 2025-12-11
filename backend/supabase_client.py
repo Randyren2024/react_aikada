@@ -170,5 +170,63 @@ class DeleteQuery:
         except requests.exceptions.RequestException as e:
             return {'data': None, 'error': str(e)}
 
-# 初始化Supabase客户端
-supabase = SupabaseClient(SUPABASE_URL, SUPABASE_KEY)
+class StorageBucket:
+    def __init__(self, client, bucket_name):
+        self.client = client
+        self.bucket_name = bucket_name
+    
+    def upload(self, file_path, file_content, content_type='application/octet-stream'):
+        """上传文件到存储桶"""
+        base_url = f'{self.client.url}/storage/v1/object/{self.bucket_name}/{file_path}'
+        headers = {
+            'apikey': self.client.key,
+            'Authorization': f'Bearer {self.client.key}',
+            'Content-Type': content_type
+        }
+        
+        try:
+            response = requests.put(
+                base_url,
+                headers=headers,
+                data=file_content
+            )
+            response.raise_for_status()
+            return {'data': {'path': file_path}, 'error': None}
+        except requests.exceptions.RequestException as e:
+            return {'data': None, 'error': str(e)}
+    
+    def get_public_url(self, file_path):
+        """获取文件的公开URL"""
+        return f'{self.client.url}/storage/v1/object/public/{self.bucket_name}/{file_path}'
+
+class StorageClient:
+    def __init__(self, client):
+        self.client = client
+    
+    def bucket(self, bucket_name):
+        """获取存储桶实例"""
+        return StorageBucket(self.client, bucket_name)
+    
+    def list_buckets(self):
+        """列出所有存储桶"""
+        base_url = f'{self.client.url}/storage/v1/buckets'
+        headers = {
+            'apikey': self.client.key,
+            'Authorization': f'Bearer {self.client.key}'
+        }
+        
+        try:
+            response = requests.get(base_url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {'error': str(e)}
+
+# 扩展 SupabaseClient 添加 storage 属性
+class EnhancedSupabaseClient(SupabaseClient):
+    def __init__(self, url, key):
+        super().__init__(url, key)
+        self.storage = StorageClient(self)
+
+# 初始化增强的 Supabase 客户端
+supabase = EnhancedSupabaseClient(SUPABASE_URL, SUPABASE_KEY)

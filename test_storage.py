@@ -45,7 +45,7 @@ def test_storage_buckets():
             print(f"  - {bucket.name} (公共: {bucket.public})")
         
         # 检查images存储桶是否存在
-        bucket_name = 'images'
+        bucket_name = 'image'
         bucket_exists = any(bucket.name == bucket_name for bucket in buckets)
         if bucket_exists:
             print(f"✅ 存储桶 '{bucket_name}' 存在")

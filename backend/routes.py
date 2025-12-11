@@ -511,7 +511,6 @@ def delete_secret(secret_id):
 # 图片上传到 Supabase 存储
 # =====================
 
-from flask import request, jsonify
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -519,48 +518,77 @@ import uuid
 # 上传图片到 Supabase 存储
 @api_bp.route('/upload/image', methods=['POST'])
 def upload_image():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-    
-    user_id = request.form.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'user_id is required'}), 400
-    
     try:
+        print("📤 收到图片上传请求")
+        print(f"   请求文件: {request.files}")
+        print(f"   请求表单: {request.form}")
+        
+        if 'file' not in request.files:
+            print("❌ 没有文件部分")
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            print("❌ 没有选择文件")
+            return jsonify({'error': 'No selected file'}), 400
+        
+        user_id = request.form.get('user_id')
+        if not user_id:
+            print("❌ 缺少 user_id")
+            return jsonify({'error': 'user_id is required'}), 400
+        
         # 生成唯一的文件名
         filename = secure_filename(file.filename)
         ext = os.path.splitext(filename)[1]
-        unique_filename = f"{user_id}/{uuid.uuid4()}{ext}"
+        unique_filename = f"image/{user_id}/{uuid.uuid4()}{ext}"
         
         # 上传到 Supabase 存储
-        # 使用用户创建的 'image' 存储桶（不是 'images'）
         bucket_name = 'image'
         
-        # 检查存储桶是否存在
-        try:
-            buckets = supabase.storage.list_buckets()
-            bucket_exists = any(bucket.name == bucket_name for bucket in buckets)
-            if not bucket_exists:
-                return jsonify({'error': f'存储桶 {bucket_name} 不存在，请在Supabase控制台创建'}), 400
-        except Exception as bucket_err:
-            return jsonify({'error': f'检查存储桶失败: {str(bucket_err)}'}), 500
+        print(f"📁 开始上传到存储桶: {bucket_name}")
+        print(f"   文件名: {unique_filename}")
+        print(f"   文件类型: {file.content_type}")
         
-        # 读取文件内容
+        # 读取文件内容并上传
         file_content = file.read()
+        print(f"✅ 读取文件内容成功")
+        print(f"   文件内容类型: {type(file_content)}")
+        print(f"   文件内容长度: {len(file_content)} 字节")
         
         # 上传文件
-        response = supabase.storage.from_(bucket_name).upload(
-            path=unique_filename,
-            file=file_content,
-            file_options={'content-type': file.content_type}
-        )
-        
+        try:
+            print("📤 正在发送上传请求到Supabase...")
+            response = supabase.storage.from_(bucket_name).upload(
+                path=unique_filename,
+                file=file_content,
+                file_options={'content-type': file.content_type}
+            )
+            print(f"✅ 上传响应: {response}")
+        except Exception as upload_err:
+            print(f"❌ 上传内部错误: {upload_err}")
+            import traceback
+            traceback.print_exc()
+            
+            # 提供更友好的错误提示
+            if 'row-level security policy' in str(upload_err):
+                return jsonify({
+                    'error': '存储桶安全策略配置错误，请检查RLS设置',
+                    'detail': '请确保使用正确的Service Role Key或调整存储桶的RLS策略'
+                }), 403
+            elif 'Bucket not found' in str(upload_err):
+                return jsonify({
+                    'error': '存储桶不存在',
+                    'detail': f'存储桶 "{bucket_name}" 不存在，请先创建该存储桶'
+                }), 404
+            else:
+                return jsonify({
+                    'error': '文件上传失败',
+                    'detail': str(upload_err)
+                }), 500
+
         # 获取文件的公共URL
         public_url = supabase.storage.from_(bucket_name).get_public_url(unique_filename)
+        print(f"🌐 文件URL: {public_url}")
         
         return jsonify({
             'url': public_url,
@@ -568,5 +596,17 @@ def upload_image():
             'bucket': bucket_name
         }), 200
     except Exception as e:
-        print(f"图片上传错误: {str(e)}")
-        return jsonify({'error': f'图片上传失败: {str(e)}'}), 500
+        error_msg = str(e)
+        print(f"❌ 图片上传错误: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        
+        # 根据不同的错误类型返回更具体的信息
+        if "The resource was not found" in error_msg:
+            return jsonify({'error': f'存储桶 "{bucket_name}" 不存在，请在Supabase控制台创建'}), 400
+        elif "violates row-level security policy" in error_msg:
+            return jsonify({'error': '存储桶安全策略配置错误，请检查RLS设置'}), 403
+        elif "No such file or directory" in error_msg:
+            return jsonify({'error': '文件路径错误'}), 400
+        else:
+            return jsonify({'error': f'图片上传失败: {error_msg}'}), 500

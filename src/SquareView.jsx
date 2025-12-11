@@ -1,40 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { getHotActivities } from './api/supabase';
 
 // Module: Square (Similar to the reference image Home)
 const SquareView = ({ CATEGORIES, Header }) => {
   const [hotActivities, setHotActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchHotActivities = async () => {
-      try {
-        const data = await getHotActivities();
-        // 转换数据格式以匹配前端组件期望的格式
-        const formattedActivities = data.map(activity => ({
-          id: activity.id,
-          title: activity.name,
-          subtitle: activity.description,
-          price: activity.price.toFixed(0),
-          sales: activity.sales_count > 10000 ? `${(activity.sales_count / 10000).toFixed(1)}万` : activity.sales_count.toString(),
-          image: activity.image_url,
-          tag: activity.tag
-        }));
-        setHotActivities(formattedActivities);
-      } catch (error) {
-        console.error('Error fetching hot activities:', error);
-      } finally {
-        setLoading(false);
+    // 暂时使用模拟数据，避免调用不存在的API
+    const mockHotActivities = [
+      {
+        id: 1,
+        title: '恐龙博物馆探索',
+        subtitle: '沉浸式体验',
+        price: '128',
+        sales: '2.3万',
+        image: 'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&q=80&w=300&h=200',
+        tag: '热销'
+      },
+      {
+        id: 2,
+        title: '植物园温室探秘',
+        subtitle: '亲子互动',
+        price: '98',
+        sales: '1.8万',
+        image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&q=80&w=300&h=200',
+        tag: '推荐'
+      },
+      {
+        id: 3,
+        title: '科技馆机器人展',
+        subtitle: 'AI体验',
+        price: '158',
+        sales: '3.1万',
+        image: 'https://images.unsplash.com/photo-1535378917042-10a22c95931a?auto=format&fit=crop&q=80&w=300&h=200',
+        tag: '新品'
+      },
+      {
+        id: 4,
+        title: '天文馆观星夜',
+        subtitle: '星空探索',
+        price: '188',
+        sales: '2.7万',
+        image: 'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?auto=format&fit=crop&q=80&w=300&h=200',
+        tag: '热销'
       }
-    };
-
-    fetchHotActivities();
+    ];
+    
+    setHotActivities(mockHotActivities);
   }, []);
-
-  if (loading) {
-    return <div className="text-center py-4">加载中...</div>;
-  }
 
   return (
     <div className="pb-24">
