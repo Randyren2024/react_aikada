@@ -4,12 +4,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 // 通用请求函数
 const request = async (url, options = {}) => {
   try {
+    // 为文件上传请求创建特殊的头部处理
+    const headers = options.body instanceof FormData 
+      ? options.headers || {} // 对于FormData，不设置Content-Type
+      : {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        };
+
     const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -92,16 +97,11 @@ export const uploadImage = async (file, userId) => {
     formData.append('file', file);
     formData.append('user_id', userId);
 
-    const response = await fetch(`${API_BASE_URL}/upload/image`, {
+    // 使用通用的request函数，它会自动处理FormData的头部
+    return request('/upload/image', {
       method: 'POST',
       body: formData,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
   } catch (error) {
     console.error('Error uploading image:', error);
     throw error;

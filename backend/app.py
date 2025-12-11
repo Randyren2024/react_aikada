@@ -12,7 +12,9 @@ from routes import api_bp
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+# 配置CORS以支持所有来源的请求
+CORS(app, origins='*', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
+     allow_headers=['Content-Type', 'Authorization', 'apikey', 'X-CSRF-Token'])
 
 # 初始化Supabase客户端
 supabase_url = os.getenv("SUPABASE_URL")
