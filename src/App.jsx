@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import SquareView from './SquareView';
 import { getSecrets, createSecret, uploadImage } from './api/supabase';
+import { isSupabaseDirectEnabled, getSecretsDirect, uploadImageDirect, createSecretDirect } from './api/supabaseDirect';
 
 // --- Mock Data ---
 
@@ -159,7 +160,9 @@ const CheckInView = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getSecrets(userId);
+      const response = isSupabaseDirectEnabled
+        ? await getSecretsDirect(userId)
+        : await getSecrets(userId);
       setSecrets(response.data || []);
     } catch (err) {
       console.error('Error loading secrets:', err);
@@ -279,11 +282,12 @@ const CheckInView = () => {
     try {
       let imageUrl = null;
       
-      // 上传图片（如果有）
       if (selectedImageFile) {
         console.log('开始上传图片，文件信息:', selectedImageFile.name, selectedImageFile.type, selectedImageFile.size);
         try {
-          const uploadResult = await uploadImage(selectedImageFile, userId);
+          const uploadResult = isSupabaseDirectEnabled
+            ? await uploadImageDirect(selectedImageFile, userId)
+            : await uploadImage(selectedImageFile, userId);
           console.log('图片上传成功，URL:', uploadResult.url);
           imageUrl = uploadResult.url;
         } catch (uploadErr) {
@@ -301,7 +305,11 @@ const CheckInView = () => {
       };
       console.log('秘密数据:', secretData);
       
-      await createSecret(secretData);
+      if (isSupabaseDirectEnabled) {
+        await createSecretDirect(secretData);
+      } else {
+        await createSecret(secretData);
+      }
       console.log('秘密创建成功');
       
       // 重新加载秘密列表
