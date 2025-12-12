@@ -1,5 +1,7 @@
-// API基础URL - 从环境变量获取，默认使用localhost
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// API基础URL
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
 // 通用请求函数
 const request = async (url, options = {}) => {
