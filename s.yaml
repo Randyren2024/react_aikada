@@ -1,0 +1,32 @@
+edition: 1.0.0
+name: aikada-backend
+access: default
+services:
+  aikada-api:
+    component: fc
+    props:
+      region: cn-hongkong
+      service:
+        name: aikada-service
+        internetAccess: true
+      function:
+        name: aikada-api
+        runtime: python3.9
+        codeUri: ./backend
+        handler: index.handler
+        memorySize: 1024
+        timeout: 30
+        environmentVariables:
+          SUPABASE_URL: ${env(SUPABASE_URL)}
+          SUPABASE_KEY: ${env(SUPABASE_KEY)}
+      triggers:
+        - name: httpTrigger
+          type: http
+          config:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
