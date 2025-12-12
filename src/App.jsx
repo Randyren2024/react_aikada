@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import SquareView from './SquareView';
 import { getSecrets, createSecret, uploadImage } from './api/supabase';
+import { resizeImage } from './utils/image';
 import { isSupabaseDirectEnabled, getSecretsDirect, uploadImageDirect, createSecretDirect } from './api/supabaseDirect';
 
 // --- Mock Data ---
@@ -285,9 +286,10 @@ const CheckInView = () => {
       if (selectedImageFile) {
         console.log('开始上传图片，文件信息:', selectedImageFile.name, selectedImageFile.type, selectedImageFile.size);
         try {
+          const preparedFile = await resizeImage(selectedImageFile, 1280, 1280, 0.8)
           const uploadResult = isSupabaseDirectEnabled
-            ? await uploadImageDirect(selectedImageFile, userId)
-            : await uploadImage(selectedImageFile, userId);
+            ? await uploadImageDirect(preparedFile, userId)
+            : await uploadImage(preparedFile, userId);
           console.log('图片上传成功，URL:', uploadResult.url);
           imageUrl = uploadResult.url;
         } catch (uploadErr) {
@@ -659,7 +661,7 @@ const CheckInView = () => {
                 )}
               </div>
               
-              <div className="flex justify-end space-x-3">
+              <div className="sticky bottom-0 bg-white pt-2 pb-3 flex justify-end space-x-3">
                 <button 
                   className="px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowSecretModal(false)}
@@ -668,7 +670,7 @@ const CheckInView = () => {
                   取消
                 </button>
                 <button 
-                  className="px-4 py-2 bg-purple-500 text-white rounded-full text-sm font-bold hover:bg-purple-600"
+                  className={`px-4 py-2 bg-purple-500 text-white rounded-full text-sm font-bold hover:bg-purple-600 ${!secretContent.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={() => {
                     console.log('保存秘密按钮被点击');
                     console.log('secretContent:', secretContent);
@@ -676,10 +678,10 @@ const CheckInView = () => {
                     console.log('loading:', loading);
                     handleCreateSecret();
                   }}
-                  disabled={loading}
+                  disabled={loading || !secretContent.trim()}
                   style={{ cursor: loading ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? '保存中...' : (!secretContent.trim() ? '请输入内容' : '保存秘密')}
+                  {loading ? '保存中...' : '保存秘密'}
                 </button>
               </div>
             </div>
