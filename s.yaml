@@ -19,6 +19,9 @@ services:
         environmentVariables:
           SUPABASE_URL: ${env(SUPABASE_URL)}
           SUPABASE_KEY: ${env(SUPABASE_KEY)}
+          SUPABASE_SERVICE_ROLE: ${env(SUPABASE_SERVICE_ROLE)}
+          GEOCODING_PROVIDER: ${env(GEOCODING_PROVIDER)}
+          MAPBOX_TOKEN: ${env(MAPBOX_TOKEN)}
       triggers:
         - name: httpTrigger
           type: http
@@ -30,3 +33,11 @@ services:
               - PUT
               - DELETE
               - OPTIONS
+    actions:
+      pre-deploy:
+        - run: pip install -r requirements.txt -t .
+          path: ./backend
+        - run: pip install --upgrade --force-reinstall urllib3==1.26.16 -t .
+          path: ./backend
+        - run: pip install --upgrade --force-reinstall requests==2.31.0 -t .
+          path: ./backend
