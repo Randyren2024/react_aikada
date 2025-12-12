@@ -134,6 +134,7 @@ const CheckInView = () => {
   const [cameraStream, setCameraStream] = useState(null);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [cameraError, setCameraError] = useState(null);
+  const [viewportBottom, setViewportBottom] = useState(0);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   
@@ -155,6 +156,35 @@ const CheckInView = () => {
       }
     };
   }, [cameraStream]);
+
+  // 监听移动端键盘弹出，调整底部操作栏位置
+  useEffect(() => {
+    const updateViewportInset = () => {
+      try {
+        const vv = window.visualViewport;
+        if (vv) {
+          const inset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+          setViewportBottom(inset);
+        } else {
+          setViewportBottom(0);
+        }
+      } catch {
+        setViewportBottom(0);
+      }
+    };
+    updateViewportInset();
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', updateViewportInset);
+      vv.addEventListener('scroll', updateViewportInset);
+    }
+    return () => {
+      if (vv) {
+        vv.removeEventListener('resize', updateViewportInset);
+        vv.removeEventListener('scroll', updateViewportInset);
+      }
+    };
+  }, []);
   
   // 获取密室消息
   const loadSecrets = async () => {
@@ -661,7 +691,8 @@ const CheckInView = () => {
                 )}
               </div>
               
-              <div className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-md bg-white pt-2 pb-safe px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] border-t border-gray-100 z-60 flex justify-end space-x-3">
+              <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-md bg-white pt-2 px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] border-t border-gray-100 z-60 flex justify-end space-x-3"
+                   style={{ bottom: `calc(${viewportBottom}px + env(safe-area-inset-bottom, 0px))` }}>
                 <button 
                   className="px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowSecretModal(false)}
