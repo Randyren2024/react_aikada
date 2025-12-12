@@ -21,7 +21,8 @@ import {
   Upload
 } from 'lucide-react';
 import SquareView from './SquareView';
-import { getSecrets, createSecret, uploadImage } from './api/supabase';
+import LocationMap from './components/LocationMap';
+import { getSecrets, createSecret, uploadImage, createCheckin } from './api/supabase';
 import { resizeImage } from './utils/image';
 import { isSupabaseDirectEnabled, getSecretsDirect, uploadImageDirect, createSecretDirect } from './api/supabaseDirect';
 
@@ -128,6 +129,8 @@ const CheckInView = () => {
   const [secrets, setSecrets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [locState, setLocState] = useState(null);
+  const [lastCheckin, setLastCheckin] = useState(null);
   
   // 摄像头相关状态
   const [showCamera, setShowCamera] = useState(false);
@@ -139,7 +142,7 @@ const CheckInView = () => {
   const canvasRef = useRef(null);
   
   // 模拟用户ID（实际应该从登录状态获取）
-  const userId = 'user-123';
+  const userId = import.meta.env.VITE_TEST_USER_ID || '00000000-0000-0000-0000-000000000001';
   
   // 加载密室消息
   useEffect(() => {
@@ -198,6 +201,60 @@ const CheckInView = () => {
     } catch (err) {
       console.error('Error loading secrets:', err);
       setError('加载悄悄话失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    if (!('geolocation' in navigator)) {
+      throw new Error('设备不支持定位');
+    }
+    const tryOnce = (opts) =>
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            resolve({ latitude, longitude, accuracy });
+          },
+          (err) => {
+            const map = { 1: '未授予定位权限', 2: '定位不可用', 3: '定位超时' };
+            reject(new Error(map[err.code] || err.message || '获取定位失败'));
+          },
+          opts
+        );
+      });
+    try {
+      return await tryOnce({ enableHighAccuracy: true, timeout: 4000, maximumAge: 0 });
+    } catch {
+      return await tryOnce({ enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
+    }
+  };
+
+  const getApproxLocationByIP = async () => {
+    const resp = await fetch('https://ipapi.co/json/');
+    const data = await resp.json();
+    if (!data || !data.latitude || !data.longitude) throw new Error('近似定位失败');
+    return { latitude: data.latitude, longitude: data.longitude, accuracy: 5000, address: data.city ? `${data.city} ${data.region}` : undefined };
+  };
+
+  const handleQuickCheckin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const loc = await getCurrentLocation();
+      setLocState(loc);
+      const payload = {
+        user_id: userId,
+        content: '打卡成功',
+        images: [],
+        location: loc
+      };
+      const res = await createCheckin(payload);
+      const data = res.data || payload;
+      setLastCheckin(data);
+    } catch (err) {
+      setError(err.message || '打卡失败');
     } finally {
       setLoading(false);
     }
@@ -421,13 +478,67 @@ const CheckInView = () => {
                   <span className="text-xs text-gray-400">查看全景图 {'>'}</span>
                </div>
                <div className="h-40 bg-green-50 rounded-xl border-2 border-dashed border-green-200 flex items-center justify-center relative overflow-hidden">
-                  {/* Mock Map Elements */}
                   <div className="absolute top-4 left-4 text-2xl animate-bounce">🏛️</div>
                   <div className="absolute bottom-4 right-10 text-2xl">🌲</div>
                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-green-300 text-sm">
                       点击点亮地图<br/>生成专属手账
                   </div>
                </div>
+               {(() => {
+                 const locObj = (lastCheckin && typeof lastCheckin.geolocation === 'object')
+                   ? lastCheckin.geolocation
+                   : (lastCheckin && typeof lastCheckin.location === 'object')
+                     ? lastCheckin.location
+                     : null;
+                 if (locObj && typeof locObj.latitude === 'number' && typeof locObj.longitude === 'number') {
+                   return (
+                     <div className="mt-3">
+                       <LocationMap lat={locObj.latitude} lng={locObj.longitude} accuracy={locObj.accuracy} />
+                     </div>
+                   );
+                 }
+                 return null;
+               })()}
+               <div className="mt-3 flex items-center justify-between">
+                 <button className="text-xs bg-green-500 text-white px-3 py-1 rounded-full shadow-sm active:scale-95" onClick={handleQuickCheckin} disabled={loading}>
+                   {loading ? '定位中...' : '立即打卡'}
+                 </button>
+                 {lastCheckin && (() => {
+                   const locObj = (typeof lastCheckin?.geolocation === 'object') ? lastCheckin.geolocation : (typeof lastCheckin?.location === 'object' ? lastCheckin.location : null);
+                   const addrStr = typeof lastCheckin?.location === 'string' ? lastCheckin.location : (locObj?.address ?? null);
+                   if (addrStr) return <div className="text-[11px] text-gray-500">{addrStr}</div>;
+                   if (locObj && typeof locObj.latitude === 'number' && typeof locObj.longitude === 'number') {
+                     const lat = Number(locObj.latitude).toFixed(6);
+                     const lng = Number(locObj.longitude).toFixed(6);
+                     return <div className="text-[11px] text-gray-500">{`坐标 ${lat}, ${lng}`}</div>;
+                   }
+                   return null;
+                 })()}
+               </div>
+               {error && (
+                <div className="mt-2 text-[11px] text-red-500 flex items-center justify-between">
+                  <span>{error}</span>
+                  <div className="flex items-center space-x-2">
+                    <button className="text-[11px] px-2 py-0.5 rounded-full border border-red-400 text-red-500" onClick={handleQuickCheckin} disabled={loading}>重试定位</button>
+                    <button className="text-[11px] px-2 py-0.5 rounded-full border border-gray-400 text-gray-600" onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const loc = await getApproxLocationByIP();
+                        setLocState(loc);
+                        const payload = { user_id: userId, content: '打卡成功', images: [], location: loc };
+                        const res = await createCheckin(payload);
+                        const data = res.data || payload;
+                        setLastCheckin(data);
+                        setError(null);
+                      } catch (e) {
+                        setError(e.message || '近似定位失败');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }} disabled={loading}>使用近似位置</button>
+                  </div>
+                </div>
+                )}
              </div>
           </div>
 

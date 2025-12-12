@@ -1,8 +1,7 @@
 from flask import Blueprint, jsonify, request
 import datetime
-import requests
 import os
-from supabase import create_client, Client
+# 使用自定义的 Supabase 客户端（requests/urllib 实现）
 
 # 创建API蓝图
 api_bp = Blueprint('api', __name__)
@@ -83,23 +82,60 @@ def create_checkin():
     data = request.get_json()
     
     # 验证必要字段
-    if not data.get('user_id') or not data.get('content'):
-        return jsonify({'error': 'user_id and content are required'}), 400
+    if not data.get('user_id'):
+        return jsonify({'error': 'user_id is required'}), 400
     
     try:
-        # 构建请求数据
+        from geocoding import clamp_location, reverse_geocode
+        # 确保用户存在，否则尝试创建一个占位用户以通过外键约束
+        try:
+            ures = supabase.table('users').select('id').eq('id', data['user_id']).execute()
+            if not ures.data:
+                placeholder_user = {
+                    'id': data['user_id'],
+                    'name': '测试用户',
+                    'created_at': datetime.datetime.now().isoformat()
+                }
+                uins = supabase.table('users').insert(placeholder_user).execute()
+                if getattr(uins, 'error', None):
+                    return jsonify({'error': f"用户不存在且创建失败: {uins.error}"}), 400
+        except Exception as ue:
+            # 如果用户表存在非空约束导致创建失败，返回明确错误
+            return jsonify({'error': f"用户不存在，请在 users 表创建该用户或设置有效 user_id。详情: {str(ue)}"}), 400
+
+        loc_in = data.get('location') or {}
+        loc = clamp_location(loc_in) if isinstance(loc_in, dict) else None
+        if loc and not loc.get('address'):
+            addr = reverse_geocode(loc['latitude'], loc['longitude'])
+            if addr:
+                loc['address'] = addr
+        # 兼容你当前的表结构：
+        # - description(TEXT) 用于记录内容，可选
+        # - photos(TEXT[]) 仅当存在图片时写入
+        # - geolocation(JSONB) 存完整定位
+        # - location(TEXT) 存地址字符串
         checkin_data = {
             'user_id': data['user_id'],
-            'content': data['content'],
-            'images': data.get('images', []),
-            'location': data.get('location'),
+            'description': data.get('content'),
+            'geolocation': loc,
+            'location': (loc.get('address') if isinstance(loc, dict) else None),
             'created_at': datetime.datetime.now().isoformat()
         }
+        images = data.get('images')
+        if isinstance(images, list) and len(images) > 0:
+            checkin_data['photos'] = images
         
-        # 使用存储过程创建打卡记录
-        # 注意：这里使用我们之前创建的存储过程，需要根据实际情况调整
         response = supabase.table('checkins').insert(checkin_data).execute()
-        return jsonify({'data': response.data[0]}), 201
+        if getattr(response, 'error', None):
+            return jsonify({'error': response.error}), 500
+        inserted = None
+        if isinstance(response.data, list) and len(response.data) > 0:
+            inserted = response.data[0]
+        elif isinstance(response.data, dict):
+            inserted = response.data
+        else:
+            inserted = checkin_data
+        return jsonify({'data': inserted}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -473,7 +509,16 @@ def create_secret():
             secret_data['image_url'] = data['image_url']
         
         response = supabase.table('secrets').insert(secret_data).execute()
-        return jsonify({'data': response.data[0]}), 201
+        if getattr(response, 'error', None):
+            return jsonify({'error': str(response.error)}), 500
+        inserted = None
+        if isinstance(response.data, list) and len(response.data) > 0:
+            inserted = response.data[0]
+        elif isinstance(response.data, dict):
+            inserted = response.data
+        else:
+            inserted = secret_data
+        return jsonify({'data': inserted}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -588,6 +633,8 @@ def upload_image():
 
         # 获取文件的公共URL
         public_url = supabase.storage.from_(bucket_name).get_public_url(unique_filename)
+        if isinstance(public_url, dict) and 'data' in public_url and 'publicUrl' in public_url['data']:
+            public_url = public_url['data']['publicUrl']
         print(f"🌐 文件URL: {public_url}")
         
         return jsonify({

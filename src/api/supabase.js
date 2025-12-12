@@ -20,9 +20,9 @@ const request = async (url, options = {}) => {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `HTTP error! status: ${response.status}`);
     }
-
     return await response.json();
   } catch (error) {
     console.error('API request failed:', error);

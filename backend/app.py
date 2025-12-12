@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from supabase import create_client, Client
+from supabase_client import supabase
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -18,7 +18,7 @@ CORS(app, origins='*', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 
 # 初始化Supabase客户端
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+supabase_key = os.getenv("SUPABASE_SERVICE_ROLE") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
 if not supabase_url or not supabase_key:
     print("错误: 缺少Supabase配置信息")
@@ -26,7 +26,7 @@ if not supabase_url or not supabase_key:
     print(f"SUPABASE_KEY: {supabase_key}")
     exit(1)
 
-supabase: Client = create_client(supabase_url, supabase_key)
+supabase = supabase
 
 # 初始化API蓝图中的Supabase客户端
 from routes import init_supabase

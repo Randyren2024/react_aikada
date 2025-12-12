@@ -37,12 +37,16 @@ pip install -r requirements.txt
 
 ### 2. 配置环境变量
 
-确保 `.env` 文件包含以下配置：
+确保 `.env` 文件包含以下配置（示例为占位，请替换为你的项目值）：
 
 ```
 # Supabase Configuration
-SUPABASE_URL=https://pdpgcuogpdghahdjngkx.supabase.co
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkcGdjdW9ncGRnaGFoZGpuZ2t4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyNzUzNjgsImV4cCI6MjA4MDg1MTM2OH0.RF8KwbAthRyh31AsLfUgCqW3bZewi8XR1E_OSqkHIdI
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_KEY=<your-supabase-anon-or-service-role-key>
+
+# Geocoding
+GEOCODING_PROVIDER=nominatim   # 也可选 mapbox
+MAPBOX_TOKEN=<your-mapbox-token>
 ```
 
 ### 3. 启动Flask服务器
@@ -76,6 +80,36 @@ npm run dev
 
 - `GET /api/checkins?user_id=:id` - 获取用户的所有打卡记录
 - `POST /api/checkins` - 创建新的打卡记录
+- 请求示例：
+  ```json
+  {
+    "user_id": "user-123",
+    "content": "打卡成功",
+    "images": [],
+    "location": {
+      "latitude": 22.543096,
+      "longitude": 114.057865,
+      "accuracy": 30.5
+    }
+  }
+  ```
+- 响应示例（部分）：
+  ```json
+  {
+    "data": {
+      "id": "...",
+      "user_id": "user-123",
+      "content": "打卡成功",
+      "location": {
+        "latitude": 22.543096,
+        "longitude": 114.057865,
+        "accuracy": 30.5,
+        "address": "广东省深圳市..."
+      },
+      "created_at": "2025-12-12T08:00:00Z"
+    }
+  }
+  ```
 - `GET /api/badges?user_id=:id` - 获取用户的徽章和成就
 
 ### 2. 卡友圈模块
