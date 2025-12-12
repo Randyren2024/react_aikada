@@ -550,7 +550,7 @@ const CheckInView = () => {
               </button>
             </div>
             
-            <div className="p-4">
+            <div className="p-4 pb-24">
               {/* 错误信息显示 */}
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-lg mb-4">
@@ -661,7 +661,7 @@ const CheckInView = () => {
                 )}
               </div>
               
-              <div className="sticky bottom-0 bg-white pt-2 pb-3 flex justify-end space-x-3">
+              <div className="fixed left-1/2 bottom-0 -translate-x-1/2 w-full max-w-md bg-white pt-2 pb-safe px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] border-t border-gray-100 z-60 flex justify-end space-x-3">
                 <button 
                   className="px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowSecretModal(false)}
